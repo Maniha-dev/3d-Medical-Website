@@ -273,7 +273,25 @@ label:focus-within { color: var(--link); }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
-  .pre { opacity: 1; transform: none; }
+  [data-r="up"], [data-r="clip"], [data-r="words"] {
+    transform: none !important;
+    clip-path: none !important;
+    transition-property: opacity !important;
+    transition-duration: .45s !important;
+    transition-timing-function: ease-out !important;
+  }
+  [data-r="up"].pre, [data-r="clip"].pre, [data-r="words"].pre { opacity: 0; }
+  [data-r="stagger"].pre > * { opacity: 0; }
+  [data-r="stagger"].in > * {
+    animation-name: reducedReveal !important;
+    animation-duration: .45s !important;
+    animation-delay: calc(var(--i, 0) * 55ms) !important;
+    animation-fill-mode: both !important;
+    animation-timing-function: ease-out !important;
+  }
+  [data-r="stagger"][data-dir="x"].in > * { animation-name: reducedReveal !important; }
+  .portrait.pre .ph-in { transform: none; }
+  @keyframes reducedReveal { from { opacity: 0; } to { opacity: 1; } }
 }
 
 /* Supporting sections: trust, testimonials, and care pathways */
@@ -524,7 +542,6 @@ body.on-stage .mobile-nav {
 }
 section[id] { scroll-margin-top: 112px; }
 @media (prefers-reduced-motion: reduce) {
-  .service-rows[data-r="stagger"].in > * { animation: none; }
   .service-card, .service-card::after { transition: none; }
   .testimonial-track { transition: none; }
 }
