@@ -27,14 +27,18 @@
   var track = document.querySelector('.testimonial-track');
   var slides = track ? [].slice.call(track.querySelectorAll('.testimonial-slide')) : [];
   var dotsWrap = document.querySelector('.slider-dots');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var index = 0;
   var timer = null;
 
   function showSlide(next) {
     if (!slides.length) return;
-    index = next >= slides.length ? slides.length : (next + slides.length) % slides.length;
+    index = next >= slides.length ? (reduceMotion ? 0 : slides.length) : (next + slides.length) % slides.length;
     track.style.transform = 'translate3d(-' + (index * 100) + '%, 0, 0)';
     var activeIndex = index === slides.length ? 0 : index;
+    [].slice.call(track.children).forEach(function (slide, i) {
+      slide.classList.toggle('is-active', i === index);
+    });
     [].slice.call(dotsWrap.children).forEach(function (dot, i) {
       dot.classList.toggle('active', i === activeIndex);
       dot.setAttribute('aria-current', i === activeIndex ? 'true' : 'false');
@@ -51,6 +55,9 @@
       index = 0;
       track.style.transition = 'none';
       track.style.transform = 'translate3d(0, 0, 0)';
+      [].slice.call(track.children).forEach(function (slide, i) {
+        slide.classList.toggle('is-active', i === 0);
+      });
       track.offsetHeight;
       track.style.transition = '';
     });
@@ -111,22 +118,65 @@
   var lastDrawnP = -1, W = 0, H = 0, dpr = 1, current = 0, shown = -1, px = 0, py = 0, cpx = 0, cpy = 0, onStage = null;
 
   var mqCompact = window.matchMedia('(max-width: 760px), (orientation: portrait)');
+  var highFrames = new Array(N), highCache = [], highFailures = new Array(N), highPending = null, targetFrame = 0;
   function isCompact() { return mqCompact.matches; }
+  function highResActive() { return window.innerWidth * (window.devicePixelRatio || 1) >= 1920 && !isCompact(); }
   function smooth(q, a, b) { var t = Math.min(1, Math.max(0, (q - a) / (b - a))); return t * t * (3 - 2 * t); }
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     var r = cv.getBoundingClientRect();
     W = r.width; H = r.height;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    if (!highResActive()) {
+      highCache.forEach(function (n) {
+        var im = highFrames[n];
+        highFrames[n] = null;
+        if (im) { im.onload = im.onerror = null; im.src = ''; }
+      });
+      highCache.length = 0;
+    }
     shown = -1;
+    loadHighFrame(targetFrame);
   }
   function ready(im) { return im && im.complete && im.naturalWidth; }
+  function loadHighFrame(n) {
+    if (!highResActive() || highPending !== null || ready(highFrames[n]) || highFailures[n]) return;
+    var im = new Image();
+    highPending = n;
+    im.decoding = 'async';
+    im.onload = function () {
+      highPending = null;
+      if (highResActive() && Math.abs(n - targetFrame) <= 2) {
+        highFrames[n] = im;
+        highCache.push(n);
+        while (highCache.length > 3) {
+          var old = highCache.shift();
+          var oldImage = highFrames[old];
+          highFrames[old] = null;
+          if (oldImage) { oldImage.onload = oldImage.onerror = null; oldImage.src = ''; }
+        }
+        if (n === targetFrame) shown = -1;
+      } else {
+        im.onload = im.onerror = null;
+        im.src = '';
+      }
+      loadHighFrame(targetFrame);
+    };
+    im.onerror = function () {
+      highPending = null;
+      highFailures[n] = true;
+      console.error('Unable to load high-resolution heart frame ' + (n + 1));
+      loadHighFrame(targetFrame);
+    };
+    im.src = 'f-4k/' + (n + 1) + '.webp';
+  }
   function draw(i) {
     var k = i;
     while (k >= 0 && !ready(frames[k])) k--;
     if (k < 0) { k = i; while (k < N && !ready(frames[k])) k++; }
     var img = frames[k];
     if (!ready(img)) return;
+    if (highResActive() && ready(highFrames[k])) img = highFrames[k];
     var cover = Math.max(W / img.naturalWidth, H / img.naturalHeight);
     var compact = isCompact(), short = !compact && H < 520;
     var s = compact ? Math.min(cover, W / img.naturalWidth * (W < 600 ? 1.9 : 1.6)) : short ? H / img.naturalHeight * 0.78 : cover * 0.8;
@@ -169,6 +219,8 @@
     current += (p - current) * (reduce ? 1 : 0.14);
     if (Math.abs(p - current) < 0.0004) current = p;
     var i = Math.round(current * (N - 1));
+    targetFrame = i;
+    loadHighFrame(i);
     if (i !== shown || (!isCompact() && current !== lastDrawnP)) { draw(i); lastDrawnP = current; }
     cpx += (px - cpx) * 0.06; cpy += (py - cpy) * 0.06;
     if (!reduce) {
@@ -267,13 +319,8 @@
 
     var target = +el.dataset.count;
     var suffix = el.dataset.suffix || '';
-    if (reduce) {
-      el.textContent = target.toLocaleString('en-US') + suffix;
-      return;
-    }
-
     var started = null;
-    var duration = target >= 1000 ? 1800 : 1300;
+    var duration = reduce ? 750 : (target >= 1000 ? 1800 : 1300);
     function frame(now) {
       if (!started) started = now;
       var progress = Math.min(1, (now - started) / duration);

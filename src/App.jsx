@@ -259,21 +259,23 @@ function Testimonials() {
       <div className="wrap">
         <div className="sh" data-r="up">
           <div><span className="kicker">Patient stories</span><h2>Care that feels clear and reassuring</h2></div>
-          <p>Realistic, considered feedback from patients who valued a calm diagnosis and a practical plan.</p>
+          <p>Sample patient feedback to preview the carousel. Replace it with consented testimonials before publishing.</p>
         </div>
         <div className="testimonial-shell" data-r="up">
           <button className="slider-btn prev" type="button" aria-label="Previous testimonial">←</button>
-          <div className="testimonial-track" aria-live="polite">
-            {testimonials.map((item) => (
-              <article className="testimonial-slide" key={item.initials}>
-                <div className="stars" aria-label="5 out of 5 stars">★★★★★</div>
-                <blockquote>{item.quote}</blockquote>
-                <div className="patient">
-                  <div className="avatar">{item.initials}</div>
-                  <div><strong>{item.name}</strong><span>{item.role}</span></div>
-                </div>
-              </article>
-            ))}
+          <div className="testimonial-viewport">
+            <div className="testimonial-track" aria-live="polite">
+              {testimonials.map((item) => (
+                <article className="testimonial-slide" key={item.initials}>
+                  <div className="stars" aria-label="5 out of 5 stars">★★★★★</div>
+                  <blockquote>{item.quote}</blockquote>
+                  <div className="patient">
+                    <div className="avatar">{item.initials}</div>
+                    <div><strong>{item.name}</strong><span>{item.role}</span></div>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
           <button className="slider-btn next" type="button" aria-label="Next testimonial">→</button>
         </div>
