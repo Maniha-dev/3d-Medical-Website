@@ -32,15 +32,29 @@
 
   function showSlide(next) {
     if (!slides.length) return;
-    index = (next + slides.length) % slides.length;
-    track.scrollTo({ left: index * track.clientWidth, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    index = next >= slides.length ? slides.length : (next + slides.length) % slides.length;
+    track.style.transform = 'translate3d(-' + (index * 100) + '%, 0, 0)';
+    var activeIndex = index === slides.length ? 0 : index;
     [].slice.call(dotsWrap.children).forEach(function (dot, i) {
-      dot.classList.toggle('active', i === index);
-      dot.setAttribute('aria-current', i === index ? 'true' : 'false');
+      dot.classList.toggle('active', i === activeIndex);
+      dot.setAttribute('aria-current', i === activeIndex ? 'true' : 'false');
     });
   }
 
   if (track && slides.length && dotsWrap) {
+    var firstClone = slides[0].cloneNode(true);
+    firstClone.setAttribute('aria-hidden', 'true');
+    firstClone.setAttribute('data-loop-clone', 'true');
+    track.appendChild(firstClone);
+    track.addEventListener('transitionend', function (e) {
+      if (e.target !== track || index !== slides.length) return;
+      index = 0;
+      track.style.transition = 'none';
+      track.style.transform = 'translate3d(0, 0, 0)';
+      track.offsetHeight;
+      track.style.transition = '';
+    });
+
     slides.forEach(function (_, i) {
       var dot = document.createElement('button');
       dot.type = 'button';
@@ -63,12 +77,19 @@
 
     function startTimer() {
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        clearInterval(timer);
         timer = setInterval(function () { showSlide(index + 1); }, 6000);
       }
     }
+    function stopTimer() {
+      clearInterval(timer);
+      timer = null;
+    }
     startTimer();
-    document.querySelector('.testimonial-shell').addEventListener('mouseenter', function () { clearInterval(timer); });
-    document.querySelector('.testimonial-shell').addEventListener('mouseleave', startTimer);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stopTimer();
+      else startTimer();
+    });
   }
 
   // Keep the FAQ in single-open mode.
